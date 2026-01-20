@@ -10,9 +10,8 @@ run_ensemble.ps1 is a PowerShell script to run multitple sims with different see
 - Open PowerShell
 - Navigate to the main PhysiCell directory
 - Ensure vres refresh has already been run in the Anaconda Prompt (as usual)
-- In the PowerShell prompt, run the script using
-powershell -ExecutionPolicy Bypass -File .\run_ensemble.ps1 -NRuns 4
-This will run 4 simulations. You can change the number to changed the number of simulations. 
+- In the PowerShell prompt, run the script using 'powershell -ExecutionPolicy Bypass -File .\run_ensemble.ps1 -NRuns 4'
+- This will run 4 simulations. You can change the number to changed the number of simulations. 
 
 esemble_output.om is a MATLAB script to visualise outputs. 
 - When the PowerShell script is used to run multiple simulations, it creates an output_ensemble folder.
