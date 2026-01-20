@@ -1,0 +1,5 @@
+# Ignore everything by default
+*
+!VRES/
+!VRES/**
+!.gitignore
