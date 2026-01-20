@@ -1,5 +1,5 @@
-# below is the command you should paste into powershell to run this script
-# This runs the executable as is. Ensure that make refresh has been run prior to execution 
+# Script to run multiple seeded simulations at once
+# Run in PowerShell after `make refresh`
 # powershell -ExecutionPolicy Bypass -File .\run_ensemble.ps1 -NRuns 4
 
 param(
@@ -49,3 +49,4 @@ for ($seed = 1; $seed -le $NRuns; $seed++)
 }
 
 Write-Host "All runs complete. Results in $OutRoot"
+
