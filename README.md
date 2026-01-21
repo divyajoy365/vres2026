@@ -4,7 +4,7 @@ VRES folder
 - To run the simulation, place the VRES folder into the sample_projects directory inside PhysiCell.
 -  Note: I am using PhysiCell-1.14.2.
 The simulation can be run as usual from the Anaconda Prompt:
-- Run 'vres refresh'
+- Run 'make refresh'
 - Then run 'vres'
 
 run_ensemble.ps1 is a PowerShell script to run multitple simulations with different seeds. To run it:
