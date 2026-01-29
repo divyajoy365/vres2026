@@ -14,23 +14,23 @@
         <x_max>200</x_max>
         <y_min>-200</y_min>
         <y_max>200</y_max>
-        <z_min>-10</z_min>
-        <z_max>10</z_max>
+        <z_min>-20</z_min>
+        <z_max>20</z_max>
         <dx>20</dx>
         <dy>20</dy>
-        <dz>20</dz>
-        <use_2D>true</use_2D>
+        <dz>10</dz>
+        <use_2D>false</use_2D>
     </domain>
 
 
     <overall>
         <!-- <max_time units="min">1880</max_time> -->
-        <max_time units="min">1880</max_time>
+        <max_time units="min"> 2000</max_time>
         <time_units>min</time_units>
         <space_units>micron</space_units>
-        <dt_diffusion units="min">0.01</dt_diffusion>
+        <dt_diffusion units="min">0.02</dt_diffusion>
         <!-- <dt_mechanics units="min">0.1</dt_mechanics> -->
-        <dt_mechanics units="min">0.02</dt_mechanics>
+        <dt_mechanics units="min">0.01</dt_mechanics>
         <dt_phenotype units="min">6</dt_phenotype>
     </overall>
 
@@ -64,7 +64,7 @@
         <legacy_random_points_on_sphere_in_divide>false</legacy_random_points_on_sphere_in_divide>
         <virtual_wall_at_domain_edge>true</virtual_wall_at_domain_edge>
         <disable_automated_spring_adhesions>false</disable_automated_spring_adhesions>
-        <random_seed>0</random_seed>
+        <random_seed>3</random_seed>
     </options>
 
     <microenvironment_setup>
@@ -178,7 +178,7 @@
                     <migration_bias units="dimensionless">.25</migration_bias>
                     <options>
                         <enabled>true</enabled>
-                        <use_2D>true</use_2D>
+                        <use_2D>false</use_2D>
                         <chemotaxis>
                             <enabled>true</enabled>
                             <substrate>chemokine</substrate>
@@ -313,7 +313,7 @@
                     <migration_bias units="dimensionless">.75</migration_bias>
                     <options>
                         <enabled>true</enabled>
-                        <use_2D>true</use_2D>
+                        <use_2D>false</use_2D>
                     </options>
                 </motility>
 
@@ -382,13 +382,15 @@
 
     <user_parameters>
         <random_seed type="int" units="dimensionless" hidden="true">0</random_seed> 
-		<number_of_cells type="int" units="none" description="initial number of cells (for each cell type)">30</number_of_cells>
+		<number_of_T_cells type="int" units="none" description="initial number of cells (for each cell type)">150</number_of_T_cells>
         <number_of_rods type="int" units="none" description="initial number of rods">10 </number_of_rods>
 
 
         <rod_concentration_ug_per_mL type="double">33</rod_concentration_ug_per_mL>
-        <rod_cells_per_rod type="int">54</rod_cells_per_rod>
+        <!-- <rod_cells_per_rod type="int">54</rod_cells_per_rod> -->
+        <rod_cells_per_rod type="int">81</rod_cells_per_rod>
         <rod_density_ug_per_um3 type="double">1e-12</rod_density_ug_per_um3>
+
         <tcell_concentration_cells_per_mL type="double">2.5e4</tcell_concentration_cells_per_mL>
 
         <rPmax type="double" units="dimensionless">4.78e-04</rPmax>

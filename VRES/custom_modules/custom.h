@@ -78,8 +78,9 @@ void tcell_division_function( Cell* pParent, Cell* pDaughter );
 void cell_proliferation_based_on_IL2( Cell* pCell , Phenotype& phenotype, double dt );
 void secretion_rate_rod_cells( Cell* pCell , Phenotype& phenotype, double dt );
 std::vector<std::string> coloring_function( Cell* pCell );
-int compute_number_of_tcells_from_density();
-int compute_number_of_rods_from_concentration();
+int compute_number_of_rods_from_concentration(void );
+int compute_number_of_tcells_from_density(void );
+
 
 
 // custom cell phenotype functions could go here 
