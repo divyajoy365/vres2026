@@ -382,7 +382,7 @@
 
     <user_parameters>
         <random_seed type="int" units="dimensionless" hidden="true">0</random_seed> 
-		<number_of_T_cells type="int" units="none" description="initial number of cells (for each cell type)">150</number_of_T_cells>
+		<number_of_T_cells type="int" units="none" description="initial number of T cells">30</number_of_T_cells>
         <number_of_rods type="int" units="none" description="initial number of rods">10 </number_of_rods>
 
 
