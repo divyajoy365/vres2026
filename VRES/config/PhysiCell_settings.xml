@@ -25,7 +25,7 @@
 
     <overall>
         <!-- <max_time units="min">1880</max_time> -->
-        <max_time units="min"> 2000</max_time>
+        <max_time units="min"> 11520</max_time>
         <time_units>min</time_units>
         <space_units>micron</space_units>
         <dt_diffusion units="min">0.02</dt_diffusion>
