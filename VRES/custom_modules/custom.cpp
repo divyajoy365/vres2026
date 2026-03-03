@@ -476,7 +476,8 @@ void setup_tissue( void )
         placed_rods_layer[L].reserve(number_of_rods);
     }
 
-    double z_layer_sep = (std::sqrt(3.0) / 2.0) * d + 7.0 * rad; // distance between rod layers 
+    // double z_layer_sep = (std::sqrt(3.0) / 2.0) * d + 7.0 * rad; // distance between rod layers 
+    double z_layer_sep = (std::sqrt(3.0) / 2.0) * d + 7 * rad;
     double z_levels[NUM_LEVELS];
 
     // if 2d, z = 0
@@ -929,8 +930,30 @@ void secretion_rate_rod_cells( Cell* pCell , Phenotype& phenotype, double dt )
 }
 
 
+
+
+
+
+/**
+ * @brief Compute number of rods from given concentration 
+ *
+ * This function calculates how many rods should be placed in the
+ * simulation domain based on a specified concentration (µg/mL)
+ *
+ * To do so, we:
+ *  1. Compute domain volume in µm^3
+ *  2. Convert domain volume to mL
+ *  3. Compute total rod mass in the domain based on concentration
+ *  4. Calculate mass of a single rod from:
+ *        density * (cells_per_rod * cell_volume)
+ *  5. Divide total mass by mass per rod and round
+ *
+ * @return Integer number of rods to create.
+ *         Returns 0 if any of the parameters are invalid.
+ */
 int compute_number_of_rods_from_concentration()
 {
+    // retrieve user defined parameters
     double conc_ug_per_mL = parameters.doubles("rod_concentration_ug_per_mL");
     int cells_per_rod     = parameters.ints("rod_cells_per_rod");
     double rho_ug_per_um3 = parameters.doubles("rho");
@@ -938,6 +961,7 @@ int compute_number_of_rods_from_concentration()
     if (conc_ug_per_mL <= 0.0 || cells_per_rod <= 0 || rho_ug_per_um3 <= 0.0)
         return 0;
 
+    // sim domain bounds
     double x_min = microenvironment.mesh.bounding_box[0];
     double y_min = microenvironment.mesh.bounding_box[1];
     double z_min = microenvironment.mesh.bounding_box[2];
@@ -945,26 +969,30 @@ int compute_number_of_rods_from_concentration()
     double y_max = microenvironment.mesh.bounding_box[4];
     double z_max = microenvironment.mesh.bounding_box[5];
 
+    // domain dimensions 
     double dx = x_max - x_min;
     double dy = y_max - y_min;
     double dz = z_max - z_min;
 
+    // Convert µm^3 to mL
     double domain_volume_um3 = dx * dy * dz;
     double domain_volume_mL  = domain_volume_um3 * 1e-12;
 
+    // total_mass = concentration * volume
     double total_mass_ug = conc_ug_per_mL * domain_volume_mL;
 
+    // Compute mass of one rod
     Cell_Definition* pRodDef = find_cell_definition("rod");
     double rod_cell_vol_um3  = pRodDef->phenotype.volume.total;
-
     double mass_one_rod_ug = rho_ug_per_um3 * (double)cells_per_rod * rod_cell_vol_um3;
     if (mass_one_rod_ug <= 0.0) return 0;
 
+    // compute number of rods 
     int n_rods = (int) std::round(total_mass_ug / mass_one_rod_ug);
     if (n_rods < 0) n_rods = 0;
-
     return n_rods;
 }
+
 
 int compute_number_of_tcells_from_density()
 {
