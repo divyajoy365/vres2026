@@ -94,7 +94,9 @@ void clamp_cell_to_domain(Cell* c);
 
 
 
-// helper functions 
+/// ******************************************** helper functions ***************************************************** ///
+
+// helper function to simplify vector maths
 struct Vec3 { double x,y,z; };
 static inline Vec3 operator+(Vec3 a, Vec3 b){ return {a.x+b.x,a.y+b.y,a.z+b.z}; }
 static inline Vec3 operator-(Vec3 a, Vec3 b){ return {a.x-b.x,a.y-b.y,a.z-b.z}; }
@@ -177,7 +179,6 @@ static inline double get_rest_length(Cell* A, Cell* B, double fallback)
 
 
 // Helper functions to ensure initial rod placement doesn't intersect or overlap for 2d
-
 struct RodSegment { double x1,y1,x2,y2; };
 
 static double orient2d(double ax,double ay,double bx,double by,double cx,double cy)
@@ -231,9 +232,6 @@ static bool segments_intersect2d(double ax,double ay,double bx,double by,
 
     return false;
 }
-
-
-
 
 
 static double dot2(double ax,double ay,double bx,double by)
@@ -295,6 +293,9 @@ static double dist2_segment_to_segment(double ax,double ay,double bx,double by,
     // return the smallest of the four end point to segement distances 
     return std::min(std::min(d1,d2), std::min(d3,d4));
 }
+
+/// ******************************************** helper functions END ***************************************************** ///
+
 
 
 
@@ -468,9 +469,16 @@ void setup_tissue( void )
 
     // Determine the z values for the rod layers based on the number of layer 
 
-    const int NUM_LEVELS = 3; //TODO: make parameter in xml
+    const int NUM_LEVELS = parameters.ints("num_rod_levels");;
 
-    std::vector<RodSegment> placed_rods_layer[NUM_LEVELS];
+    // std::vector<RodSegment> placed_rods_layer[NUM_LEVELS]; 
+    // double z_levels[NUM_LEVELS];
+
+    std::vector<std::vector<RodSegment>> placed_rods_layer(NUM_LEVELS);
+    std::vector<double> z_levels(NUM_LEVELS);
+
+
+
     for(int L = 0; L < NUM_LEVELS; L++)
     {
         placed_rods_layer[L].reserve(number_of_rods);
@@ -478,7 +486,6 @@ void setup_tissue( void )
 
     // double z_layer_sep = (std::sqrt(3.0) / 2.0) * d + 7.0 * rad; // distance between rod layers 
     double z_layer_sep = (std::sqrt(3.0) / 2.0) * d + 7 * rad;
-    double z_levels[NUM_LEVELS];
 
     // if 2d, z = 0
     if(default_microenvironment_options.simulate_2D)
@@ -714,16 +721,22 @@ void setup_tissue( void )
 static void rod_elastic_contact_thin_hcp(
     Cell* pC1, Phenotype& p1, Cell* pC2, Phenotype& p2, double dt )
 {
+
+    // ensure both cells have 3D positions
     if( pC1->position.size() != 3 || pC2->position.size() != 3 ) return;
 
+    // only for rod cells
     static int rod_type = get_cell_definition("rod").type;
     if(pC1->type != rod_type || pC2->type != rod_type) return;
 
+    // only apply force if two cells are attached
     if(!are_attached(pC1, pC2)) return;
 
+    // vecotr from one attched rod cell to another 
     std::vector<double> displacement = pC2->position;
     displacement -= pC1->position;
 
+    // get the cell definition indices to look up adhesion affinities
     int ii = find_cell_definition_index( pC1->type );
     int jj = find_cell_definition_index( pC2->type );
 
@@ -737,9 +750,15 @@ static void rod_elastic_contact_thin_hcp(
     // fallback rest length
     double d0 = 2.0 * p1.geometry.radius * 0.95238095238;
 
-    // per edge rest length 
+    // look up the stored rest length for this specific bond
+    // this was set at initialisation to the actual distance when the bond was created
     double rest = get_rest_length(pC1, pC2, d0);
 
+
+
+    // Hooke's law: force = k * (current length - rest length)
+    // positive strength = cells are too far apart, pull together
+    // negative strength = cells are too close, push apart
     double strength = ( norm(displacement) - rest ) * effective_k;
     normalize( &displacement );
     axpy( &(pC1->velocity), strength, displacement );
@@ -748,6 +767,7 @@ static void rod_elastic_contact_thin_hcp(
 void contact_function( Cell* pMe, Phenotype& phenoMe,
                        Cell* pOther, Phenotype& phenoOther, double dt )
 {
+
     rod_elastic_contact_thin_hcp(pMe, phenoMe, pOther, phenoOther, dt);
 }
 
@@ -759,48 +779,63 @@ void custom_function( Cell* pCell, Phenotype& phenotype , double dt )
 
 void tcell_update_velocity( Cell* pCell, Phenotype& phenotype, double dt )
 {
+     // standard velocity function 
     standard_update_cell_velocity( pCell, phenotype, dt );
 
     static int rod_type = get_cell_definition("rod").type;
 
+    // get indices for the custom data variables we need
     int k_touch = pCell->custom_data.find_variable_index("touching_rod");
     int k_time  = pCell->custom_data.find_variable_index("attached_time");
     int k_state = pCell->custom_data.find_variable_index("state");
 
+     // if any of these variables are missing, skip the activation logic
     if( k_touch < 0 || k_time < 0 || k_state < 0 ) return;
 
+    // reset the contact flag at the start of each time step
     pCell->custom_data[k_touch] = 0.0;
 
+     // check all nearby cells to see if any rod is physically touching this T cell
     auto nearby = pCell->nearby_interacting_cells();
 
     for( Cell* other : nearby )
     {
+        // skip non-rod cells
         if( other->type != rod_type ) continue;
 
+        // compute centre-to-centre distance
         double dx = pCell->position[0] - other->position[0];
         double dy = pCell->position[1] - other->position[1];
         double dz = pCell->position[2] - other->position[2];
         double d  = std::sqrt(dx*dx + dy*dy + dz*dz);
 
+         // two spheres are touching if the distance between centres
+        // is less than the sum of their radii
         double contact_dist = pCell->phenotype.geometry.radius + other->phenotype.geometry.radius;
 
         if( d <= contact_dist )
         {
+            // mark this T cell as touching a rod and stop checking
             pCell->custom_data[k_touch] = 1.0;
             break;
         }
     }
 
+    // activation logic: only applies to naive T cells (state == 0)
+
     if( pCell->custom_data[k_state] < 0.5 )
     {
+        // if currently touching a rod, accumulate contact time
         if( pCell->custom_data[k_touch] > 0.5 )
         {
             pCell->custom_data[k_time] += dt;
 
+            // activation threshold: 30 minutes of cumulative contact
             const double THRESH_MIN = 30;
 
             if( pCell->custom_data[k_time] >= THRESH_MIN )
             {
+                // activate the T cell
                 pCell->custom_data[k_state] = 1.0;
 
                 #pragma omp critical
@@ -817,6 +852,8 @@ void tcell_update_velocity( Cell* pCell, Phenotype& phenotype, double dt )
 
 void tcell_division_function( Cell* pParent, Cell* pDaughter )
 {
+    // called by PhysiCell every time a T cell divides
+
     if( pParent == nullptr || pDaughter == nullptr ) return;
 
     static int t_type = get_cell_definition("T cell").type;
@@ -827,10 +864,15 @@ void tcell_division_function( Cell* pParent, Cell* pDaughter )
     int k_touch = pParent->custom_data.find_variable_index("touching_rod");
 
     if( k_state < 0 ) return;
+     // by default PhysiCell copies all custom data from parent to daughter,
+    // so the daughter would inherit the active state.
+    // we override this: if the parent is active, reset the daughter to naive
+    // so she must independently accumulate 30 minutes of rod contact to activate
 
     if( pParent->custom_data[k_state] > 0.5 )
     {
         pDaughter->custom_data[k_state] = 0.0;
+          // also clear the daughter's contact history
 
         if( k_time  >= 0 ) pDaughter->custom_data[k_time]  = 0.0;
         if( k_touch >= 0 ) pDaughter->custom_data[k_touch] = 0.0;
@@ -840,6 +882,8 @@ void tcell_division_function( Cell* pParent, Cell* pDaughter )
                   << pParent->ID << " daughter id=" << pDaughter->ID
                   << " t=" << PhysiCell_globals.current_time << "\n";
     }
+
+    // clamp both cells to the domain in case division placed them slightly outside
 
     clamp_cell_to_domain(pParent);
     clamp_cell_to_domain(pDaughter);
@@ -868,17 +912,20 @@ std::vector<std::string> coloring_function( Cell* pCell )
 
         if( active )
         {
+             // active T cell
             output[0] = "#FF8C00";
             output[2] = "#FFFFFF";
         }
         else
         {
+            // naive T cell: blue
             output[0] = "blue";
             output[2] = "darkblue";
         }
     }
     else if( pCell->type == rod_type )
     {
+        // rod cells: green
         output[0] = "green";
         output[2] = "darkgreen";
     }
@@ -898,19 +945,27 @@ void cell_proliferation_based_on_IL2( Cell* pCell , Phenotype& phenotype, double
     if( pCell->type == t_type )
     {
         int k_state = pCell->custom_data.find_variable_index("state");
+        // only active T cells are allowed to divide
 
         bool active = (k_state >= 0 && pCell->custom_data[k_state] > 0.5);
         if( active )
+
+    
         {
+
+             // indices for the live cycle model (start and end are the same phase for live cells)
             static int cycle_start_index = live.find_phase_index(PhysiCell_constants::live);
             static int cycle_end_index   = live.find_phase_index(PhysiCell_constants::live);
 
+            // get IL-2 concentration at the cell's current position
             static int IL2_index = microenvironment.find_density_index("IL-2");
             double IL2 = pCell->nearest_density_vector()[IL2_index];
 
+            // load proliferation parameters from XML
             double rPmax = parameters.doubles("rPmax");
             double IP    = parameters.doubles("IP");
 
+            // Michaelis-Menten
             phenotype.cycle.data.transition_rate( cycle_start_index, cycle_end_index ) = rPmax*IL2/(IP+IL2);
         }
     }
@@ -920,12 +975,14 @@ void secretion_rate_rod_cells( Cell* pCell , Phenotype& phenotype, double dt )
 {
     static int IL2_index = microenvironment.find_density_index("IL-2");
 
+    // load secretion parameters from XML
     double v   = parameters.doubles("v");
     double q   = parameters.doubles("q");
     double rho = parameters.doubles("rho");
 
     double time = PhysiCell::PhysiCell_globals.current_time;
 
+    // exponential decay model
     phenotype.secretion.secretion_rates[IL2_index] = v*q*rho*exp(-v*time);
 }
 
@@ -1001,6 +1058,7 @@ int compute_number_of_tcells_from_density()
 
     std::cout << "\n[Tcell DEBUG] cells_per_mL = " << cells_per_mL << std::endl;
 
+     // get domain dimensions
     double x_min = microenvironment.mesh.bounding_box[0];
     double y_min = microenvironment.mesh.bounding_box[1];
     double z_min = microenvironment.mesh.bounding_box[2];
@@ -1016,6 +1074,7 @@ int compute_number_of_tcells_from_density()
               << " dy=" << dy
               << " dz=" << dz << std::endl;
 
+    // convert domain volume from µm^3 to mL, then multiply by density
     double volume_um3 = dx * dy * dz;
     double volume_mL  = volume_um3 * 1e-12;
 
@@ -1095,32 +1154,4 @@ void clamp_cell_to_domain(Cell* c)
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// void clamp_cell_to_domain(Cell* c)
-// {
-
-//     auto& bb = microenvironment.mesh.bounding_box;
-
-//     c->position[0] = std::max(bb[0], std::min(bb[3],  c->position[0]));
-//     c->position[1] = std::max(bb[1], std::min(bb[4], c->position[1]));
-//     c->position[2] = std::max(bb[2], std::min(bb[5], c->position[2]));
-
-// }
 
